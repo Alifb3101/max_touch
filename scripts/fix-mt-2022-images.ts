@@ -135,26 +135,49 @@ async function updateDatabase() {
     .eq('kind', 'frame')
     .order('sort_order');
   
-  if (!frames || frames.length === 0) {
-    console.log('ℹ️  No frame images to update');
-    return true;
+  if (frames && frames.length > 0) {
+    // Update each frame URL
+    for (const frame of frames) {
+      const oldUrl = frame.url;
+      // Convert /MT-2022/01.png -> kits/mt-2022/01.png
+      const newUrl = oldUrl.replace('/MT-2022/', 'kits/mt-2022/').toLowerCase();
+      
+      const { error } = await supabase
+        .from('product_images')
+        .update({ url: newUrl })
+        .eq('id', frame.id);
+      
+      if (error) {
+        console.error(`   ❌ Failed to update ${oldUrl}: ${error.message}`);
+      } else {
+        console.log(`   ✅ ${oldUrl} → ${newUrl}`);
+      }
+    }
   }
   
-  // Update each frame URL
-  for (const frame of frames) {
-    const oldUrl = frame.url;
-    // Convert /MT-2022/01.png -> kits/mt-2022/01.png
-    const newUrl = oldUrl.replace('/MT-2022/', 'kits/mt-2022/').toLowerCase();
-    
-    const { error } = await supabase
-      .from('product_images')
-      .update({ url: newUrl })
-      .eq('id', frame.id);
-    
-    if (error) {
-      console.error(`   ❌ Failed to update ${oldUrl}: ${error.message}`);
-    } else {
-      console.log(`   ✅ ${oldUrl} → ${newUrl}`);
+  // Update product showcase images (the small product images)
+  console.log('\n📦 Updating product showcase images...');
+  const { data: showcase } = await supabase
+    .from('product_showcase')
+    .select('id, label, image_url')
+    .eq('product_id', product.id);
+  
+  if (showcase && showcase.length > 0) {
+    for (const item of showcase) {
+      const oldUrl = item.image_url;
+      // Convert /MT-2022/brush.png -> kits/mt-2022/brush.png
+      const newUrl = oldUrl.replace('/MT-2022/', 'kits/mt-2022/').toLowerCase();
+      
+      const { error } = await supabase
+        .from('product_showcase')
+        .update({ image_url: newUrl })
+        .eq('id', item.id);
+      
+      if (error) {
+        console.error(`   ❌ ${item.label}: ${error.message}`);
+      } else {
+        console.log(`   ✅ ${item.label}: ${oldUrl} → ${newUrl}`);
+      }
     }
   }
   
